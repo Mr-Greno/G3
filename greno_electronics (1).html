@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Greno Electronics</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      color: #222;
+      margin-bottom: 30px;
+    }
+    .customer-info,
+    .product-entry,
+    .search-section,
+    .total-section {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 16px;
+      background-color: #2c89ff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #176cd8;
+    }
+    #billTable {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    #billTable th,
+    #billTable td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    #productResults {
+      display: none;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    #productResults div {
+      background: #eee;
+      padding: 8px;
+      margin: 3px 0;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    #productResults div:hover {
+      background: #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div style="text-align:center; margin-bottom:30px;">
+    <h1 style="margin-bottom:5px; font-family:Impact, sans-serif; color:black; text-shadow:2px 2px 4px rgba(0,0,0,0.3); background-color:orange; padding:10px; border-radius:10px;">
+      <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/c227b3aa-de9c-4b79-8a6e-7d6cde928cdb.png" alt="Greno Electronics Logo" style="width:30px; height:30px; vertical-align:middle"> 
+      GRENO ELECTRONICS
+    </h1>
+    <p style="color:#333;margin:5px 0 0 0; font-weight:bold; font-size:0.9em;">Your trusted electronics partner since 2005</p>
+  </div>
+
+  <div class="customer-info">
+    <input type="text" id="customerName" placeholder="Customer Name" />
+    <input type="text" id="customerPhone" placeholder="Phone Number" />
+  </div>
+
+  <div class="product-entry">
+    <h3>Add New Product</h3>
+    <input type="text" id="prodName" placeholder="Product Name" />
+    <input type="text" id="prodQuality" placeholder="Quality (Optional)" />
+    <input type="text" id="prodFeatures" placeholder="Features (Optional)" />
+    <input type="number" id="prodPrice" placeholder="Price" />
+    <button onclick="addProductToCatalog()">Add Product</button>
+  </div>
+
+  <div class="search-section">
+    <input type="text" id="searchBox" placeholder="Search product..." oninput="filterProducts()" 
+           onfocus="filterProducts()"
+           style="width: 100%; padding: 10px; font-size: 16px; margin-bottom: 5px;"/>
+    <div id="productResults"></div>
+  </div>
+
+  <h3>Selected Products</h3>
+  <table id="billTable">
+    <thead>
+      <tr>
+        <th>S.No</th>
+        <th>Product</th>
+        <th>Quantity</th>
+        <th>Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="total-section">
+    <strong>Total Amount: ₹<span id="grandTotal">0</span></strong>
+  </div>
+
+  <button onclick="generatePDF()" style="
+    background-color: #4CAF50;
+    font-weight: bold;
+    padding: 12px 24px;
+    margin-top: 20px;
+  ">
+    <i class="fas fa-file-pdf"></i> Generate Bill (PDF)
+  </button>
+
+  <script>
+    let catalog = JSON.parse(localStorage.getItem("catalog")) || [];
+    let selectedProducts = [];
+
+    function addProductToCatalog() {
+      const name = document.getElementById("prodName").value.trim();
+      const quality = document.getElementById("prodQuality").value.trim();
+      const features = document.getElementById("prodFeatures").value.trim();
+      const price = parseFloat(document.getElementById("prodPrice").value);
+
+      if (!name || isNaN(price)) {
+        alert("Error: Please fill required fields:\n- Product Name\n- Valid Price");
+        document.getElementById(!name ? 'prodName' : 'prodPrice').focus();
+        return;
+      }
+
+      catalog.push({ 
+        name, 
+        quality: quality || "", 
+        features: features || "", 
+        price 
+      });
+      localStorage.setItem("catalog", JSON.stringify(catalog));
+      alert("Product added successfully!");
+      document.querySelectorAll("#prodName, #prodQuality, #prodFeatures, #prodPrice").forEach(e => e.value = "");
+    }
+
+    function filterProducts() {
+      const query = document.getElementById("searchBox").value.toLowerCase();
+      if (query.trim() === "") {
+        document.getElementById("productResults").innerHTML = "";
+        return;
+      }
+
+      const results = catalog
+        .filter(p => p.name.toLowerCase().includes(query) ||
+                    p.quality.toLowerCase().includes(query) ||
+                    p.features.toLowerCase().includes(query))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const container = document.getElementById("productResults");
+      container.innerHTML = "";
+      results.forEach((prod) => {
+        const div = document.createElement("div");
+        div.textContent = \`\${prod.name} | ₹\${prod.price} | \${prod.quality} | \${prod.features}\`;
+        div.onclick = () => {
+          selectProduct(prod);
+          document.getElementById("productResults").style.display = "none";
+        };
+        container.appendChild(div);
+      });
+      container.style.display = results.length ? "block" : "none";
+    }
+
+    function selectProduct(prod) {
+      const quantity = prompt(\`Enter quantity for \${prod.name}:\`, 1);
+      if (!quantity || isNaN(quantity) || quantity <= 0) return;
+
+      const total = prod.price * quantity;
+      selectedProducts.push({ ...prod, quantity, total });
+      document.getElementById("productResults").innerHTML = "";
+      document.getElementById("searchBox").value = "";
+      document.getElementById("productResults").style.display = "none";
+      renderBillTable();
+    }
+
+    function renderBillTable() {
+      const tbody = document.querySelector("#billTable tbody");
+      tbody.innerHTML = "";
+      let grandTotal = 0;
+      selectedProducts.forEach((p, i) => {
+        const row = \`<tr>
+          <td>\${i + 1}</td>
+          <td>\${p.name}</td>
+          <td>\${p.quantity}</td>
+          <td>₹\${p.price}</td>
+          <td>₹\${p.total}</td>
+        </tr>\`;
+        tbody.innerHTML += row;
+        grandTotal += p.total;
+      });
+      document.getElementById("grandTotal").textContent = grandTotal.toFixed(2);
+    }
+
+    function generatePDF() {
+      const customerName = document.getElementById("customerName").value;
+      const phone = document.getElementById("customerPhone").value;
+
+      const printWindow = window.open('', '', 'height=700,width=900');
+      printWindow.document.write('<html><head><title>Bill</title>');
+      printWindow.document.write('<style>body{font-family:monospace;} table, th, td{border:1px solid black; border-collapse:collapse; padding:8px; text-align:center;} h2{text-align:center;} </style>');
+      printWindow.document.write('</head><body >');
+      printWindow.document.write(\`<h2>GRENO ELECTRONICS</h2>\`);
+      printWindow.document.write(\`<p><strong>Customer:</strong> \${customerName}<br><strong>Phone:</strong> \${phone}</p>\`);
+      printWindow.document.write(document.getElementById("billTable").outerHTML);
+      printWindow.document.write(\`<h3>Total: ₹\${document.getElementById("grandTotal").textContent}</h3>\`);
+      printWindow.document.write('<p style="margin-top:50px;">Signature: ______________________</p>');
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+  </script>
+</body>
+</html>
